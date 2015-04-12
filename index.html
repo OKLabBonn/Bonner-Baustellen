@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>BETA - Geplante Bonner Baustellen</title>
+	<meta charset="utf-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- leafletjs.css -->
+<link rel="stylesheet" href="http://wipokar.de/maps/bonn_baustelle/leaflet.css"/>
+ 
+<!-- leafletjs.js -->
+<script src="http://wipokar.de/maps/bonn_baustelle/leaflet.js"></script>
+<script src="http://wipokar.de/maps/scripts/jquery.min.js"></script>
+
+<!-- label.js -->
+<script src="http://wipokar.de/maps/bonn_baustelle/leaflet.label.js"></script>
+
+<!-- label.css -->
+<link rel="stylesheet" href="http://wipokar.de/maps/bonn_baustelle/leaflet.label.css"/>
+
+<!-- Leaflet.zoomhome https://github.com/torfuspolymorphus/leaflet.zoomhome -->
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"/>
+<link rel="stylesheet" href="leaflet.zoomhome.css"/>
+<script src="leaflet.zoomhome.min.js"></script>
+
+
+<style>
+  body { margin:0; padding:0; background-color: #ccc; }
+  #map{ position:absolute; top: 0%; left: 0%; width:100%; height:100%; }
+  
+		h4 {
+			margin: 0 0 5px;
+			color: #333;
+			font: 16px/18px Arial, Helvetica, sans-serif;
+		}
+
+	#header { 	
+				position:absolute; 
+				top: 0%; 
+				left: 0%;
+				width: 100%;
+				height: 60px;
+				background-color: rgba(255,255,255,0.85);
+				z-index: 12;
+				text-align: center;
+				text-decoration: none;
+
+		}
+	</style>
+</head>
+<body>
+
+
+<div id="map"></div>
+<div id="header"><br><h4>Karte befindet sich noch im BETA Stadium... <br> Fragen oder Anregungen bitte an: <a href="mailto:mail@wipokar.de">mail@wipokar.de</a><h4></div>
+<script type="text/javascript" >
+
+		/*******************************
+		*
+		*		Variablen festlegen
+		*
+		*******************************/
+
+		var Baustellen,
+	 		BaustellenURL = "http://wipokar.de/maps/bonn_baustelle/Baustelle.geojson";
+
+		/*******************************
+		*
+		*		http://opendata.bonn.de 
+		*
+		*******************************/
+
+		// Baustellen CONTAINER
+		function jsonKlauen(){
+			$.ajax({ 
+				url: BaustellenURL, 
+				dataType: 'json', 
+				async: false,
+				success: function(json){ 
+				Baustellen = json;
+				} 
+			});
+
+		}
+
+		jsonKlauen();
+
+
+		/*******************************
+		*
+		*		Karte definieren
+		*
+		*******************************/
+
+		var map = L.map('map',{	
+			zoomControl : false
+		}).setView([50.7389,7.105], 14);
+
+
+		/*******************************
+		*
+		*		ALTERNATIVES ZOOMCONTROL
+		*
+		*******************************/
+
+		var zoomHome = L.Control.zoomHome();
+			zoomHome.addTo(map);
+
+
+		/*******************************
+		*
+		*		Baustellen Icon
+		*
+		*******************************/
+
+		// THUMBNAILS && SHADOW
+		var BaustellenIcon = L.Icon.extend({
+		    options: {
+		        shadowUrl: '',
+		        iconSize:     [48, 48],
+		        shadowSize:   [48, 48], // = iconSize
+		        iconAnchor:   [24, 24], // = 1/2 iconSize damit das Thumbnail zentriert über den Koordinaten angezeigt wird
+		        shadowAnchor: [24, 24] // = 1/2 iconSize damit der Schatten zentriert über den Koordinaten angezeigt wird
+		    }
+		}); 
+
+		// CONTAINER ICON DEFINIEREN
+		var containerIcon = new BaustellenIcon({iconUrl: 'http://wipokar.de/maps/bonn_baustelle/Baustelle.svg'});
+		
+		/*******************************
+		*
+		*		Opendata.bonn.de liefert vertauschte Koordiaten -> switch
+		*
+		*******************************/
+
+		// CONTAINERLIST 
+		function baustellenCoordsSwitch (){
+			var a;
+			for (var i=0; i< Baustellen.features.length;i++){
+				a=Baustellen.features[i].geometry.coordinates[0];
+				Baustellen.features[i].geometry.coordinates[0]=Baustellen.features[i].geometry.coordinates[1];
+				Baustellen.features[i].geometry.coordinates[1]=a;
+			}
+		}
+
+		baustellenCoordsSwitch();
+
+
+		/*******************************
+		*
+		*		Datum umwandeln
+		*
+		*******************************/
+
+		function dateTransform (datumString){
+
+			var pattern = /(\d{2})\.(\d{2})\.(\d{4})/;
+			var dt = new Date(datumString.replace(pattern,'$3-$2-$1'));
+
+			return dt;
+		}
+
+		/*******************************
+		*
+		*		Ortsangaben entnullen
+		*
+		*******************************/
+
+		function entnullen(){
+			for (var i=0; i< Baustellen.features.length;i++){
+				if (Baustellen.features[i].properties.adresse == null){
+					Baustellen.features[i].properties.adresse = 'Keine Adresse vorhanden'
+				}
+			}
+		}
+
+		entnullen();
+
+		/*******************************
+		*
+		*		Schilder darstellen
+		*
+		*******************************/
+		var jetzt = new Date();
+		
+		function baustellenDisplay(){
+			for (var i=0; i< Baustellen.features.length;i++){
+
+				//AKTUELLE
+				if ((dateTransform(Baustellen.features[i].properties.von) < jetzt) && (jetzt < dateTransform(Baustellen.features[i].properties.bis))) {
+					L.marker(Baustellen.features[i].geometry.coordinates, {icon: containerIcon, riseOnHover:true, zIndexOffset: 10}).bindLabel('<h4>' + Baustellen.features[i].properties.adresse + '</h4>Von: ' + Baustellen.features[i].properties.von + '<br> Bis: ' + Baustellen.features[i].properties.bis + '<br><b> Sperrung:</b> ' + Baustellen.features[i].properties.sperrung , {
+	    															noHide: false,
+	   	 															direction: 'auto',
+	   	 															offset: [30,-15]
+																	}).addTo(map);
+				}
+
+				//ZUKUNFT
+				if (dateTransform(Baustellen.features[i].properties.von) > jetzt) {					
+					L.marker(Baustellen.features[i].geometry.coordinates, {icon: containerIcon, opacity: 0.25, zIndexOffset: 9}).bindLabel('<h4>' + Baustellen.features[i].properties.adresse + '</h4>Von: ' + Baustellen.features[i].properties.von + '<br> Bis: ' + Baustellen.features[i].properties.bis + '<br><b> Sperrung:</b> ' + Baustellen.features[i].properties.sperrung, {
+	    															noHide: false,
+	   	 															direction: 'auto',
+	   	 															offset: [30,-15]
+																	}).addTo(map);				
+				}
+			
+				//VERGANGENHEIT
+
+			}
+		}
+
+		baustellenDisplay();
+
+
+		// CONTAINERLIST
+		L.icon = function (options) {
+		    return new L.Icon(options);
+		};
+      
+		L.CRS.EPSG4326;
+
+
+		/*******************************
+		*
+		*		LEGENDE
+		*
+		*******************************/
+
+
+
+
+		/*******************************
+		*
+		*		OPENSTREETMAP.ORG 
+		*
+		*******************************/
+
+		var OpenStreetMap_Mapnik = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+			}).addTo(map);
+
+		/*******************************	
+		*
+		*		CREDITS
+		*
+		*******************************/
+
+		// OPENDATA BONN
+		map.attributionControl.addAttribution('Datenquelle: Bundesstadt Bonn - <a href="http://opendata.bonn.de" title="Offene Daten der Stadt Bonn"> OpenData.Bonn.de</a>' );
+
+
+		// Wipokar.de
+		map.attributionControl.addAttribution('<a href="http://wipokar.de" title="Wirtschaftspolitische Karten"> WIPOKAR.de</a>' );
+
+
+		//Label
+		map.attributionControl.addAttribution('<a href="https://github.com/Leaflet/Leaflet.label" title="Leaflet Lable Plugin"> Leaflet Lable Plugin</a>' );
+
+		// Leaflet.zoomhome
+		map.attributionControl.addAttribution(' <a href="https://github.com/torfuspolymorphus/leaflet.zoomhome#">Leaflet.zoomhome</a>');
+
+		//Aktualität
+		map.attributionControl.addAttribution('Bearbeitungsstand: 12.04.2015');
+
+
+
+</script>
+</body>
+</html>
