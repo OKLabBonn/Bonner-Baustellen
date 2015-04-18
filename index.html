@@ -25,6 +25,7 @@
 <script src="leaflet.zoomhome.min.js"></script>
 
 
+
 <style>
   body { margin:0; padding:0; background-color: #ccc; }
   #map{ position:absolute; top: 0%; left: 0%; width:100%; height:100%; }
@@ -50,10 +51,43 @@
 	</style>
 </head>
 <body>
-
-
 <div id="map"></div>
 <div id="header"><br><h4>Karte befindet sich noch im BETA Stadium... <br> Fragen oder Anregungen bitte an: <a href="mailto:mail@wipokar.de">mail@wipokar.de</a><h4></div>
+
+<?php
+
+class proxy
+{
+    private $userAgent = "OK Lab Bonn";
+    private $timeout = 120;
+    private $connectTimeout = 60;
+    private $followLocation = true;
+    private $url = "http://stadtplan.bonn.de/geojson?Thema=14698&koordsys=4326"; //Hier URL festlegen
+
+    public function getURL()
+    {
+        $ch = curl_init();
+        $ret = curl_setopt($ch, CURLOPT_URL, $this->url);
+        $ret = curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
+        $ret = curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        $ret = curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
+        $ret = curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+        $ret = curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $ret = curl_setopt($ch, CURLOPT_FOLLOWLOCATION, $this->followLocation);
+
+        $inhalt = curl_exec($ch);
+        //echo $url;
+        //  echo $inhalt;
+        curl_close($ch);
+        return $inhalt;
+    }
+}
+
+$proxy = new proxy();
+echo $proxy->get();
+
+?>
+
 <script type="text/javascript" >
 
 		/*******************************
@@ -61,10 +95,11 @@
 		*		Variablen festlegen
 		*
 		*******************************/
+ 
+		var Baustellen, 
+			BaustellenURL =  'http://wipokar.de/maps/bonn_baustelle/Baustelle.geojson';
 
-		var Baustellen,
-	 		BaustellenURL = "http://wipokar.de/maps/bonn_baustelle/Baustelle.geojson";
-
+		
 		/*******************************
 		*
 		*		http://opendata.bonn.de 
@@ -84,8 +119,8 @@
 
 		}
 
-		jsonKlauen();
-
+		jsonKlauen();		
+	
 
 		/*******************************
 		*
@@ -97,7 +132,6 @@
 			zoomControl : false
 		}).setView([50.7389,7.105], 14);
 
-
 		/*******************************
 		*
 		*		ALTERNATIVES ZOOMCONTROL
@@ -106,7 +140,6 @@
 
 		var zoomHome = L.Control.zoomHome();
 			zoomHome.addTo(map);
-
 
 		/*******************************
 		*
@@ -125,7 +158,7 @@
 		    }
 		}); 
 
-		// CONTAINER ICON DEFINIEREN
+		// ICON DEFINIEREN
 		var containerIcon = new BaustellenIcon({iconUrl: 'http://wipokar.de/maps/bonn_baustelle/Baustelle.svg'});
 		
 		/*******************************
@@ -237,7 +270,7 @@
 		*******************************/
 
 		var OpenStreetMap_Mapnik = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 			}).addTo(map);
 
 		/*******************************	
